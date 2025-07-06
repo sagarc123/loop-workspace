@@ -69,7 +69,7 @@ If the build succeeds, you're ready to deploy!
    - **Root Directory**: `./` (leave empty)
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
+   - **Install Command**: `npm ci`
 
 4. **Set Environment Variables**
    - In the Vercel dashboard, go to Project Settings > Environment Variables
@@ -150,17 +150,25 @@ If you're using Firebase Hosting alongside Vercel, update your `firebase.json`:
    - Ensure Node.js version is compatible
    - Check build logs in Vercel dashboard
 
-2. **Environment Variables Not Working**
+2. **Permission Denied Error (sh: line 1: /vercel/path0/node_modules/.bin/vite: Permission denied)**
+   - **Solution**: The project has been configured to use `npm ci` for installation and proper build commands
+   - **What was fixed**:
+     - Updated `vercel.json` to use `npm ci` instead of `npm install`
+     - Optimized Vite build configuration for production
+     - Added `.vercelignore` to exclude unnecessary files
+   - **If the issue persists**: Try redeploying with the updated configuration
+
+3. **Environment Variables Not Working**
    - Verify variables are set in Vercel dashboard
    - Check that variable names start with `VITE_`
    - Redeploy after adding variables
 
-3. **Firebase Connection Issues**
+4. **Firebase Connection Issues**
    - Verify Firebase config in environment variables
    - Check Firebase project settings
    - Ensure Firebase services are enabled
 
-4. **Routing Issues**
+5. **Routing Issues**
    - The `vercel.json` file handles SPA routing
    - If issues persist, check your React Router configuration
 
@@ -199,18 +207,53 @@ If you're using Firebase Hosting alongside Vercel, update your `firebase.json`:
 
 ### Manual Deployments
 
+Use the provided `deploy.sh` script for manual deployments:
+
 ```bash
-vercel --prod
+chmod +x deploy.sh
+./deploy.sh
 ```
 
-## 📞 Support
+## 📁 Project Structure for Deployment
 
-- [Vercel Documentation](https://vercel.com/docs)
-- [Firebase Documentation](https://firebase.google.com/docs)
-- [Vite Documentation](https://vitejs.dev/guide/)
+```
+loop-workspace/
+├── src/                    # Source code
+├── public/                 # Static assets
+├── dist/                   # Build output (generated)
+├── package.json            # Dependencies and scripts
+├── vite.config.js          # Vite configuration
+├── vercel.json             # Vercel deployment config
+├── .vercelignore           # Files to exclude from deployment
+├── .env                    # Environment variables (local)
+├── env.example             # Environment variables template
+└── deploy.sh               # Deployment script
+```
+
+## 🎯 Next Steps
+
+After successful deployment:
+
+1. **Test the deployed application**
+   - Verify all features work correctly
+   - Test authentication flow
+   - Check file upload functionality
+
+2. **Set up monitoring**
+   - Enable Vercel Analytics
+   - Configure Firebase Analytics
+   - Set up error tracking
+
+3. **Optimize performance**
+   - Monitor Core Web Vitals
+   - Optimize bundle size
+   - Implement lazy loading
+
+4. **Security considerations**
+   - Review Firebase security rules
+   - Ensure environment variables are secure
+   - Regular dependency updates
 
 ---
 
-**Your Loop app should now be live on Vercel! 🎉**
-
-Visit your deployment URL and test all features to ensure everything works correctly. 
+**Need help?** Check the [Vercel documentation](https://vercel.com/docs) or [Firebase documentation](https://firebase.google.com/docs) for more detailed information. 
