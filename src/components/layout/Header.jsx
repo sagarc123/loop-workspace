@@ -31,9 +31,6 @@ const Header = ({ user, setCurrentModule, onProfileClick }) => {
           <button className="lg:hidden p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <Bars3Icon className="h-6 w-6" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Loop
-          </h1>
         </div>
 
         <div className="flex items-center space-x-4">
