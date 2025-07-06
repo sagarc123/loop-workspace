@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 // Your Firebase configuration
@@ -21,10 +21,33 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const messaging = getMessaging(app);
+
+// Connect to emulators in development
+if (import.meta.env.DEV) {
+  try {
+    connectAuthEmulator(auth, 'http://localhost:9099');
+    connectFirestoreEmulator(db, 'localhost', 8080);
+  } catch (error) {
+    console.log('Emulators already connected or not available');
+  }
+}
+
+// Initialize messaging only in production and if supported
+let messaging = null;
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  try {
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.warn('Messaging not available:', error);
+  }
+}
+
+export { messaging };
 
 // FCM token management
 export const requestNotificationPermission = async () => {
+  if (!messaging) return null;
+  
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
@@ -42,6 +65,8 @@ export const requestNotificationPermission = async () => {
 
 // Handle foreground messages
 export const onMessageListener = () => {
+  if (!messaging) return Promise.resolve(null);
+  
   return new Promise((resolve) => {
     onMessage(messaging, (payload) => {
       resolve(payload);

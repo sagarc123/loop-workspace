@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from 'firebase/auth';
 import { auth } from '../../config/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import useAuthStore from '../../store/authStore';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
@@ -47,12 +47,22 @@ const SignUp = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
       
+      // Update display name
+      await updateProfile(user, { displayName: formData.name });
+      
       // Create user profile in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name: formData.name,
         email: formData.email,
         role: 'user',
-        createdAt: new Date()
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        teams: [],
+        notificationPreferences: {
+          email: true,
+          push: true,
+          sms: false
+        }
       });
       
       setUserProfile({
@@ -67,7 +77,26 @@ const SignUp = () => {
       navigate('/');
     } catch (error) {
       console.error('Sign up error:', error);
-      toast.error(error.message || 'Failed to create account');
+      let errorMessage = 'Failed to create account';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'An account with this email already exists';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password is too weak. Please choose a stronger password';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Email/password accounts are not enabled. Please contact support';
+          break;
+        default:
+          errorMessage = error.message || 'Failed to create account';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -78,6 +107,16 @@ const SignUp = () => {
     
     try {
       const provider = new GoogleAuthProvider();
+      
+      // Add custom parameters for better UX
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      // Add scopes if needed
+      provider.addScope('email');
+      provider.addScope('profile');
+      
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
       
@@ -90,8 +129,20 @@ const SignUp = () => {
           email: user.email,
           photoURL: user.photoURL,
           role: 'user',
-          createdAt: new Date()
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          teams: [],
+          notificationPreferences: {
+            email: true,
+            push: true,
+            sms: false
+          }
         });
+      } else {
+        // Update last login time
+        await setDoc(doc(db, 'users', user.uid), {
+          lastLogin: serverTimestamp()
+        }, { merge: true });
       }
       
       setUserProfile({
@@ -106,7 +157,26 @@ const SignUp = () => {
       navigate('/');
     } catch (error) {
       console.error('Google sign in error:', error);
-      toast.error(error.message || 'Failed to sign in with Google');
+      let errorMessage = 'Failed to sign in with Google';
+      
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-in was cancelled';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked. Please allow pop-ups for this site';
+          break;
+        case 'auth/cancelled-popup-request':
+          errorMessage = 'Sign-in was cancelled';
+          break;
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = 'An account already exists with this email using a different sign-in method';
+          break;
+        default:
+          errorMessage = error.message || 'Failed to sign in with Google';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -182,7 +252,7 @@ const SignUp = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="input-field pr-10"
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                 />
                 <button
                   type="button"
@@ -268,7 +338,7 @@ const SignUp = () => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign up with Google
+              {loading ? 'Signing in...' : 'Sign up with Google'}
             </button>
           </div>
         </form>
